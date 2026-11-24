@@ -82,12 +82,12 @@ button.warn{color:var(--up)}
 <body>
 <main>
 <div class="top"><h1>投資組合紀錄</h1><div class="seg" id="theme" role="group" aria-label="外觀"><button type="button" data-t="auto">自動</button><button type="button" data-t="light">日間</button><button type="button" data-t="dark">夜間</button></div></div>
-<div class="sub">依交易流水計算平均成本與損益。已內建 Google 試算表同步網址，電腦與手機開啟將自動同步資料。</div>
+<div class="sub">依交易流水計算平均成本與損益。在設定填入 Google 試算表同步網址後，電腦與手機開啟將自動同步資料。</div>
 
 <div class="sum" id="sum"></div>
 <div class="bar">
   <button id="refresh">立即更新報價</button>
-  <span id="syncBadge">☁️ 準備同步…</span>
+  <span id="syncBadge">☁️ 未設定雲端同步</span>
   <span id="status"></span>
 </div>
 
@@ -188,14 +188,13 @@ button.warn{color:var(--up)}
 
 <script>
 const KEY_TX='pf.tx',KEY_PX='pf.manual',KEY_SYNC='pf.syncUrl';
-const DEFAULT_SYNC_URL='https://script.google.com/macros/s/AKfycbxt_PiDpfenchKsvig9Qp3zuj74WvDDIWelKs8lhN34PmdF4RbJP6iZQ7zmM7czZuDRrQ/exec';
 const CUR={TW:'TWD',US:'USD',CRYPTO:'USD',CASH:'TWD',BANK:'TWD',GOLD:'TWD'};
 const TYPE={TW:'台股',US:'美股',CRYPTO:'加密貨幣',CASH:'現金',BANK:'銀行',GOLD:'黃金'};
 const ALL_TYPES=['TW','US','CRYPTO','CASH','BANK','GOLD'];
 const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
 const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
 let txs=load(KEY_TX,[]),manual=load(KEY_PX,{}),live={},pend=null,pendT=0,twT=0,busy=false;
-let syncUrl=localStorage.getItem(KEY_SYNC)||DEFAULT_SYNC_URL;
+let syncUrl=localStorage.getItem(KEY_SYNC)||'';
 let pushTimer=0;
 const L={CRYPTO:[],TW:[],US:[],CASH:[],BANK:[],GOLD:[]};
 let holdFilter='ALL',chartFilter='ALL',txFilter='ALL',allocDrill=null;
@@ -214,11 +213,12 @@ function setSyncBadge(txt,isErr=false){
 }
 
 function buildPayload(){
+  const {finnhubKey,...safeSet}=S;
   return JSON.stringify({
     updatedAt:Date.now(),
     txs,
     manual,
-    set:{...S},
+    set:safeSet,
     snap
   });
 }
@@ -265,7 +265,7 @@ async function cloudPull(isInit=false){
     if(j&&Array.isArray(j.txs)){
       txs=j.txs;
       manual=j.manual||{};
-      if(j.set){S={...DEF,...j.set};save(KEY_SET,S);syncSet()}
+      if(j.set){S={...DEF,...j.set,finnhubKey:S.finnhubKey||''};save(KEY_SET,S);syncSet()}
       if(j.snap){snap=j.snap;save(KEY_SNAP,snap)}
       save(KEY_TX,txs);
       save(KEY_PX,manual);
@@ -630,7 +630,7 @@ async function fillPrice(){
   f.price.addEventListener('input',()=>{delete f.price.dataset.auto});
   f.sym.addEventListener('input',()=>{clearTimeout(dt);dt=setTimeout(fillPrice,400)});
   f.sym.addEventListener('change',fillPrice);f.type.addEventListener('change',fillPrice);
-  $('fhKey').addEventListener('change',e=>{S.finnhubKey=e.target.value.trim();save(KEY_SET,S);schedulePush();refresh()})}
+  $('fhKey').addEventListener('change',e=>{S.finnhubKey=e.target.value.trim();save(KEY_SET,S);refresh()})}
 
 /* 交易紀錄：先依「類型」合併成同一個區塊，點開看所有該類型交易流水 */
 function renderTxs(){
@@ -751,7 +751,7 @@ $('hold').addEventListener('change',e=>{const k=e.target.dataset.k;if(!k)return;
 $('refresh').onclick=()=>{if(syncUrl)cloudPull(true);refresh()};
 $('exp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({txs,manual,set:{...S,finnhubKey:''},snap},null,1)],{type:'application/json'}));a.download='portfolio.json';a.click()};
 $('imp').onclick=()=>$('file').click();
-$('file').onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());txs=j.txs||[];manual=j.manual||{};S={...DEF,...(j.set||{})};snap=j.snap||{};save(KEY_TX,txs);save(KEY_PX,manual);save(KEY_SET,S);save(KEY_SNAP,snap);syncSet();render();schedulePush();refresh()}catch{$('msg').textContent='匯入失敗:檔案格式不正確'}};
+$('file').onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());txs=j.txs||[];manual=j.manual||{};S={...DEF,...(j.set||{}),finnhubKey:S.finnhubKey||''};snap=j.snap||{};save(KEY_TX,txs);save(KEY_PX,manual);save(KEY_SET,S);save(KEY_SNAP,snap);syncSet();render();schedulePush();refresh()}catch{$('msg').textContent='匯入失敗:檔案格式不正確'}};
 $('f').date.value=new Date().toISOString().slice(0,10);
 syncSet();feeHint();render();
 if(syncUrl)cloudPull(true).then(()=>refresh());else refresh();
