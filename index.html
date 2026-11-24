@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>投資組合紀錄</title>
+<script>try{var _t=localStorage.getItem('pf.theme');if(_t==='light'||_t==='dark')document.documentElement.dataset.theme=_t}catch(e){}</script>
+<style>
+:root{color-scheme:light;--bg:#f2f4f6;--panel:#fff;--ink:#14202b;--mute:#64707c;--line:#d9dee3;--accent:#0b6e8a;--up:#d0312d;--down:#1a8754}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:#10161c;--panel:#18212a;--ink:#e6ebef;--mute:#8d9aa6;--line:#2a3640;--accent:#4db6d3;--up:#ff6b63;--down:#4cc38a}}
+:root[data-theme=dark]{color-scheme:dark;--bg:#10161c;--panel:#18212a;--ink:#e6ebef;--mute:#8d9aa6;--line:#2a3640;--accent:#4db6d3;--up:#ff6b63;--down:#4cc38a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif}
+main{max-width:980px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:20px;margin:0 0 4px}h2{font-size:16px;margin:0}
+.sec-hd{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:28px 0 10px;flex-wrap:wrap}
+.sec-sel{padding:5px 10px;font-size:13px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.sub{color:var(--mute);font-size:13px}
+.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.sum{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}
+.sum div{flex:1 1 220px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.sum b{display:block;font-size:26px;font-variant-numeric:tabular-nums;margin:2px 0}
+.sum .cur{color:var(--mute);font-size:13px}
+.up{color:var(--up)}.down{color:var(--down)}
+.wrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:640px}
+th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left}
+th{font-weight:600;color:var(--mute);font-size:13px}th.num{text-align:right}
+tr:last-child td{border-bottom:0}
+form{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px}
+label{display:flex;flex-direction:column;font-size:12px;color:var(--mute);gap:3px}
+input,select,button{font:inherit;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+button{cursor:pointer}button.primary{background:var(--accent);color:#fff;border-color:var(--accent);align-self:end}
+button.link{border:0;background:none;color:var(--mute);padding:2px 6px}
+button.chip{padding:3px 9px;font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:5px;color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.price-in{width:96px;text-align:right}
+#status{margin-left:auto;font-size:12px;color:var(--mute)}
+#syncBadge{font-size:12px;padding:3px 8px;border-radius:5px;background:var(--panel);border:1px solid var(--line);color:var(--mute)}
+.empty{padding:18px;color:var(--mute)}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;flex:none}
+.seg button{border:0;border-radius:0;background:var(--panel);padding:5px 10px;font-size:13px}
+.seg button[aria-pressed=true],button.primary{background:var(--accent);color:var(--bg)}
+.grp{background:var(--panel);border:1px solid var(--line);border-radius:8px;margin-bottom:10px;overflow:hidden}
+.grp>summary{padding:12px 14px;cursor:pointer;display:flex;gap:10px;align-items:center;flex-wrap:wrap;list-style:none;user-select:none}
+.grp>summary::-webkit-details-marker{display:none}
+.grp>summary::before{content:"▸";font-size:12px;color:var(--mute);transition:transform .15s;display:inline-block;width:12px}
+.grp[open]>summary::before{transform:rotate(90deg)}
+.grp>summary .grow{flex:1}
+.grp .wr{overflow-x:auto;border-top:1px solid var(--line)}
+.grp table{min-width:540px}
+.hold-metrics{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;font-size:13px;font-variant-numeric:tabular-nums}
+.hold-metrics b{font-size:15px}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px}
+.card.wide{grid-column:1/-1}.ct{font-weight:600;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:24px}
+#cAlloc svg{max-width:190px;display:block;margin:0 auto}#cTrend svg{width:100%;height:auto;display:block}
+.alloc-seg{cursor:pointer;transition:opacity .15s}.alloc-seg:hover{opacity:.8}
+.legend{list-style:none;margin:10px 0 0;padding:0;font-size:13px;display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}
+.legend li{display:flex;justify-content:space-between;align-items:center;padding:3px 5px;border-radius:4px}
+.legend li.clickable{cursor:pointer}.legend li.clickable:hover{background:var(--bg)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;flex:none}
+.row{display:grid;grid-template-columns:76px 1fr 78px;gap:8px;align-items:center;font-size:13px;margin:5px 0}
+.trk{position:relative;height:14px;background:var(--bg);border-radius:3px}
+.trk::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--mute)}
+.trk i{position:absolute;top:0;bottom:0;border-radius:2px}.bu{background:var(--up)}.bd{background:var(--down)}
+.setg{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;margin-top:8px}
+.setg .span-all{grid-column:1/-1}
+.key{display:flex;gap:14px;font-size:12px;color:var(--mute);margin-bottom:4px}
+.sy{position:relative}
+.sg{position:absolute;z-index:5;left:0;right:0;top:100%;margin:2px 0 0;padding:4px;list-style:none;background:var(--panel);border:1px solid var(--line);border-radius:6px;max-height:260px;overflow:auto;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+.sg li{padding:6px 8px;border-radius:4px;cursor:pointer;display:flex;justify-content:space-between;gap:8px;color:var(--ink);font-size:14px}
+.sg li small{color:var(--mute)}
+.sg li.on,.sg li:hover{background:var(--bg)}
+.sg[hidden]{display:none}
+#msg{margin:6px 2px;min-height:18px;color:var(--up);font-size:13px}
+button.warn{color:var(--up)}
+</style>
+</head>
+<body>
+<main>
+<div class="top"><h1>投資組合紀錄</h1><div class="seg" id="theme" role="group" aria-label="外觀"><button type="button" data-t="auto">自動</button><button type="button" data-t="light">日間</button><button type="button" data-t="dark">夜間</button></div></div>
+<div class="sub">依交易流水計算平均成本與損益。已內建 Google 試算表同步網址，電腦與手機開啟將自動同步資料。</div>
+
+<div class="sum" id="sum"></div>
+<div class="bar">
+  <button id="refresh">立即更新報價</button>
+  <span id="syncBadge">☁️ 準備同步…</span>
+  <span id="status"></span>
+</div>
+
+<div class="sec-hd">
+  <h2>持倉（依類型彙整，點擊展開細項）</h2>
+  <select id="holdType" class="sec-sel" aria-label="持倉類型篩選">
+    <option value="ALL">全部類型</option>
+    <option value="TW">台股</option>
+    <option value="US">美股</option>
+    <option value="CRYPTO">加密貨幣</option>
+    <option value="CASH">現金</option>
+    <option value="BANK">銀行</option>
+    <option value="GOLD">黃金</option>
+  </select>
+</div>
+<div id="hold"></div>
+
+<div class="sec-hd">
+  <h2>圖表</h2>
+  <select id="chartType" class="sec-sel" aria-label="圖表類型分類">
+    <option value="ALL">全部類型</option>
+    <option value="TW">台股</option>
+    <option value="US">美股</option>
+    <option value="CRYPTO">加密貨幣</option>
+    <option value="CASH">現金</option>
+    <option value="BANK">銀行</option>
+    <option value="GOLD">黃金</option>
+  </select>
+</div>
+<div class="charts">
+<div class="card"><div class="ct"><span id="cAllocTitle">持倉配置(依類型)</span><span id="cAllocAction"></span></div><div id="cAlloc"></div></div>
+<div class="card"><div class="ct"><span id="cPlTitle">各標的未實現損益(TWD)</span></div><div id="cPl"></div></div>
+<div class="card wide"><div class="ct"><span id="cTrendTitle">金額變化(TWD)</span></div><div id="cTrend"></div>
+<div class="sub">投入成本依交易日期重建;市值每天記錄一筆(開啟本頁並更新報價時),所以曲線從你開始使用的那天起累積。美元資產以設定的匯率換算。</div></div>
+</div>
+
+<div class="sec-hd"><h2>新增交易</h2></div>
+<form id="f">
+  <label>類型<select name="type">
+    <option value="TW">台股</option>
+    <option value="US">美股</option>
+    <option value="CRYPTO">加密貨幣</option>
+    <option value="CASH">現金</option>
+    <option value="BANK">銀行</option>
+    <option value="GOLD">黃金</option>
+  </select></label>
+  <label>代碼<div class="sy"><input name="sym" required autocomplete="off" placeholder="輸入代碼或名稱" style="width:100%"><ul class="sg" id="sg" hidden></ul></div></label>
+  <label>買賣<select name="side"><option value="buy">買入/存入</option><option value="sell">賣出/提領</option></select></label>
+  <label>數量<input name="qty" type="number" step="any" min="0"></label>
+  <label>單價<input name="price" type="number" step="any" min="0"></label>
+  <label>金額(不含手續費)<input name="amount" type="number" step="any" min="0"></label>
+  <label>手續費(留空自動算)<input name="fee" type="number" step="any" min="0" placeholder="自動計算"></label>
+  <label>日期<input name="date" type="date" required></label>
+  <button class="primary">新增交易</button>
+</form>
+<div id="msg" role="status"></div>
+<div id="feeHint" class="sub"></div>
+<details id="setDetails"><summary class="sub" style="cursor:pointer">費率、匯率與雲端同步設定</summary><div class="setg">
+<label>台股手續費折數(6 = 6折)<input data-s="twDisc" type="number" step="any" min="0"></label>
+<label>台股最低手續費<input data-s="twMin" type="number" step="any" min="0"></label>
+<label>股票證交稅 %(賣出)<input data-s="twTax" type="number" step="any" min="0"></label>
+<label>ETF 證交稅 %(賣出)<input data-s="etfTax" type="number" step="any" min="0"></label>
+<label>美股手續費率 %<input data-s="usRate" type="number" step="any" min="0"></label>
+<label>美股最低手續費 USD<input data-s="usMin" type="number" step="any" min="0"></label>
+<label>加密貨幣手續費率 %<input data-s="cryptoRate" type="number" step="any" min="0"></label>
+<label>黃金手續費率 %<input data-s="goldRate" type="number" step="any" min="0"></label>
+<label>USD→TWD 匯率<input data-s="usdtwd" type="number" step="any" min="0"></label>
+<label>Finnhub 金鑰(美股即時報價)<input id="fhKey" type="password" autocomplete="off" placeholder="貼上金鑰"></label>
+<label class="span-all">Google 試算表同步網址 (Apps Script Web App URL，結尾為 /exec)
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <input id="syncUrl" type="url" autocomplete="off" placeholder="https://script.google.com/macros/s/..../exec" style="flex:1;min-width:220px">
+    <button type="button" id="cloudPull">從雲端拉取覆蓋本機</button>
+    <button type="button" id="cloudPush">將本機上傳覆蓋雲端</button>
+  </div>
+</label>
+</div></details>
+
+<div class="sec-hd">
+  <h2>交易紀錄（依類型合併，點開展開）</h2>
+  <select id="txType" class="sec-sel" aria-label="交易紀錄類型篩選">
+    <option value="ALL">全部類型</option>
+    <option value="TW">台股</option>
+    <option value="US">美股</option>
+    <option value="CRYPTO">加密貨幣</option>
+    <option value="CASH">現金</option>
+    <option value="BANK">銀行</option>
+    <option value="GOLD">黃金</option>
+  </select>
+</div>
+<div id="txs"></div>
+<div class="bar">
+  <button id="exp">匯出 JSON 備份</button>
+  <button id="imp">匯入 JSON 備份</button>
+  <input type="file" id="file" accept="application/json" hidden>
+</div>
+<p class="sub">報價來源:加密貨幣 Binance(即時);台股 證交所/櫃買 OpenAPI(收盤價);美股 多源並行競速(Finnhub / Yahoo Finance / Stooq 轉發);現金、銀行、黃金可手動輸入現價。幣別:台股、現金、銀行、黃金 TWD,美股與加密貨幣 USD。</p>
+</main>
+
+<script>
+const KEY_TX='pf.tx',KEY_PX='pf.manual',KEY_SYNC='pf.syncUrl';
+const DEFAULT_SYNC_URL='https://script.google.com/macros/s/AKfycbxt_PiDpfenchKsvig9Qp3zuj74WvDDIWelKs8lhN34PmdF4RbJP6iZQ7zmM7czZuDRrQ/exec';
+const CUR={TW:'TWD',US:'USD',CRYPTO:'USD',CASH:'TWD',BANK:'TWD',GOLD:'TWD'};
+const TYPE={TW:'台股',US:'美股',CRYPTO:'加密貨幣',CASH:'現金',BANK:'銀行',GOLD:'黃金'};
+const ALL_TYPES=['TW','US','CRYPTO','CASH','BANK','GOLD'];
+const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
+const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
+let txs=load(KEY_TX,[]),manual=load(KEY_PX,{}),live={},pend=null,pendT=0,twT=0,busy=false;
+let syncUrl=localStorage.getItem(KEY_SYNC)||DEFAULT_SYNC_URL;
+let pushTimer=0;
+const L={CRYPTO:[],TW:[],US:[],CASH:[],BANK:[],GOLD:[]};
+let holdFilter='ALL',chartFilter='ALL',txFilter='ALL',allocDrill=null;
+const openHold=new Set(load('pf.holdOpen',['TW','US','CRYPTO','CASH','BANK','GOLD']));
+const openTxType=new Set(load('pf.txTypeOpen',['TW','US','CRYPTO','CASH','BANK','GOLD']));
+const $=id=>document.getElementById(id);
+const fmt=(n,d=2)=>n.toLocaleString('zh-TW',{minimumFractionDigits:d,maximumFractionDigits:d});
+const key=(t,s)=>t+':'+s;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* 雲端同步核心 */
+function setSyncBadge(txt,isErr=false){
+  const el=$('syncBadge');
+  el.textContent=txt;
+  el.style.color=isErr?'var(--up)':'var(--mute)';
+}
+
+function buildPayload(){
+  return JSON.stringify({
+    updatedAt:Date.now(),
+    txs,
+    manual,
+    set:{...S},
+    snap
+  });
+}
+
+function schedulePush(){
+  if(!syncUrl)return;
+  clearTimeout(pushTimer);
+  setSyncBadge('☁️ 準備同步…');
+  pushTimer=setTimeout(()=>cloudPush(true),1000);
+}
+
+async function cloudPush(isAuto=false){
+  if(!syncUrl){
+    if(!isAuto)alert('請先貼上 Google Apps Script 網址');
+    return;
+  }
+  setSyncBadge('☁️ 上傳雲端中…');
+  try{
+    const res=await fetch(syncUrl,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:buildPayload()
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const j=await res.json();
+    if(!j.ok)throw new Error('寫入失敗');
+    setSyncBadge('☁️ 已同步 '+new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+  }catch(e){
+    setSyncBadge('☁️ 上傳失敗(請檢查網址與權限)',true);
+  }
+}
+
+async function cloudPull(isInit=false){
+  if(!syncUrl){
+    setSyncBadge('☁️ 未設定雲端同步');
+    return;
+  }
+  setSyncBadge('☁️ 讀取雲端中…');
+  try{
+    const u=syncUrl+(syncUrl.includes('?')?'&':'?')+'_='+Date.now();
+    const res=await fetch(u);
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const j=await res.json();
+    if(j&&Array.isArray(j.txs)){
+      txs=j.txs;
+      manual=j.manual||{};
+      if(j.set){S={...DEF,...j.set};save(KEY_SET,S);syncSet()}
+      if(j.snap){snap=j.snap;save(KEY_SNAP,snap)}
+      save(KEY_TX,txs);
+      save(KEY_PX,manual);
+      render();
+      setSyncBadge('☁️ 已同步 '+new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+      if(!isInit)refresh();
+    }else if(isInit&&txs.length>0){
+      await cloudPush(true);
+    }else{
+      setSyncBadge('☁️ 雲端連線正常(尚無資料)');
+    }
+  }catch(e){
+    setSyncBadge('☁️ 讀取失敗(使用本機快取)',true);
+  }
+}
+
+function positions(){
+  const m={};
+  [...txs].sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id).forEach(t=>{
+    const k=key(t.type,t.sym),p=m[k]??={type:t.type,sym:t.sym,qty:0,cost:0,realized:0};
+    if(t.side==='buy'){p.qty+=t.qty;p.cost+=t.qty*t.price+t.fee}
+    else{const q=Math.min(t.qty,p.qty),avg=p.qty?p.cost/p.qty:0;
+      p.realized+=q*t.price-t.fee-avg*q;p.cost-=avg*q;p.qty-=q}
+  });
+  return Object.values(m);
+}
+const priceOf=p=>manual[key(p.type,p.sym)]??live[key(p.type,p.sym)]??((p.type==='CASH'||p.type==='BANK')?1:null);
+
+function render(){renderMain();renderCharts()}
+
+function renderMain(){
+  const ps=positions(),allOpen=ps.filter(p=>p.qty>1e-12);
+  const filteredOpen=holdFilter==='ALL'?allOpen:allOpen.filter(p=>p.type===holdFilter);
+  const filteredPs=holdFilter==='ALL'?ps:ps.filter(p=>p.type===holdFilter);
+  const tot={};
+
+  filteredOpen.forEach(p=>{
+    const px=priceOf(p),mv=px==null?null:px*p.qty;
+    const t=tot[CUR[p.type]]??={cost:0,mv:0,realized:0,missing:0};
+    t.cost+=p.cost;if(mv==null)t.missing++;else t.mv+=mv;
+  });
+  filteredPs.forEach(p=>{if(p.realized){(tot[CUR[p.type]]??={cost:0,mv:0,realized:0,missing:0}).realized+=p.realized}});
+  const prefix=holdFilter==='ALL'?'':`[${TYPE[holdFilter]}] `;
+  $('sum').innerHTML=Object.entries(tot).map(([c,t])=>{
+    const pl=t.mv-t.cost,cls=pl>=0?'up':'down',sg=pl>0?'+':'';
+    return `<div><span class="cur">${prefix}${c} 市值</span><b>${fmt(t.mv)}</b>
+    <span class="${cls}">未實現 ${sg}${fmt(pl)} (${t.cost?sg+fmt(pl/t.cost*100)+'%':'—'})</span>
+    <div class="sub">投入成本 ${fmt(t.cost)}；已實現 ${fmt(t.realized)}${t.missing?`；${t.missing} 檔缺報價`:''}</div></div>`}).join('')||`<div><span class="cur">${prefix}總覽</span><b>—</b></div>`;
+
+  const typesToShow=holdFilter==='ALL'?ALL_TYPES.filter(ty=>filteredOpen.some(p=>p.type===ty)):[holdFilter];
+  const groupsHtml=typesToShow.map(ty=>{
+    const items=filteredOpen.filter(p=>p.type===ty);
+    if(!items.length)return '';
+    const cur=CUR[ty];
+    let gCost=0,gMv=0,gMiss=0;
+    const rowsHtml=items.map(p=>{
+      const px=priceOf(p),avg=p.cost/p.qty,mv=px==null?null:px*p.qty,pl=mv==null?null:mv-p.cost,r=pl==null?null:pl/p.cost;
+      gCost+=p.cost;if(mv==null)gMiss++;else gMv+=mv;
+      const cls=pl==null?'':pl>=0?'up':'down',sg=pl>0?'+':'';
+      const k=key(p.type,p.sym);
+      return `<tr><td><b>${esc(p.sym)}</b></td><td class="num">${fmt(p.qty,p.qty%1?4:0)}</td><td class="num">${fmt(avg)}</td>
+      <td class="num"><input class="price-in" data-k="${k}" type="number" step="any" value="${manual[k]??px??''}" placeholder="手動輸入" aria-label="${esc(p.sym)} 現價"></td>
+      <td class="num">${mv==null?'—':fmt(mv)}</td><td class="num ${cls}">${pl==null?'—':sg+fmt(pl)}</td><td class="num ${cls}">${r==null?'—':sg+fmt(r*100)+'%'}</td></tr>`;
+    }).join('');
+
+    const gPl=gMv-gCost,gRet=gCost>0?(gPl/gCost*100):null;
+    const gCls=gPl>=0?'up':'down',gSg=gPl>0?'+':'';
+    const isOpen=holdFilter!=='ALL'||openHold.has(ty);
+    return `<details class="grp hold-grp" data-ty="${ty}"${isOpen?' open':''}>
+      <summary>
+        <b>${TYPE[ty]}</b>
+        <span class="sub">${items.length} 檔 · ${cur}</span>
+        <span class="grow"></span>
+        <span class="hold-metrics">
+          <span class="sub">成本 ${fmt(gCost)}</span>
+          <span>總市值 <b>${fmt(gMv)}</b></span>
+          <span class="${gCls}">${gSg}${fmt(gPl)} (${gRet==null?'—':gSg+fmt(gRet)+'%'})</span>
+        </span>
+      </summary>
+      <div class="wr"><table>
+        <thead><tr><th>代碼</th><th class="num">數量/股數</th><th class="num">平均成本</th><th class="num">現價</th><th class="num">市值 (${cur})</th><th class="num">未實現損益</th><th class="num">報酬率</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table></div>
+    </details>`;
+  }).filter(Boolean).join('');
+
+  $('hold').innerHTML=groupsHtml||`<div class="card empty">${holdFilter==='ALL'?'還沒有持倉。在下方新增第一筆買入或存入交易。':'目前此類型沒有持倉。'}</div>`;
+  renderTxs();
+}
+
+$('hold').addEventListener('toggle',e=>{
+  const ty=e.target.dataset&&e.target.dataset.ty;
+  if(!ty||holdFilter!=='ALL')return;
+  e.target.open?openHold.add(ty):openHold.delete(ty);
+  save('pf.holdOpen',[...openHold]);
+},true);
+
+/* 網路請求工具 */
+const T=(u,ms=8000)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);
+  return fetch(u,{signal:c.signal}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}).finally(()=>clearTimeout(t))};
+const TText=(u,ms=8000)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);
+  return fetch(u,{signal:c.signal}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.text()}).finally(()=>clearTimeout(t))};
+const num=v=>{const n=parseFloat(String(v).replace(/,/g,''));return isNaN(n)?null:n};
+
+async function getCrypto(){
+  for(const h of ['https://data-api.binance.vision','https://api.binance.com']){
+    try{const a=await T(h+'/api/v3/ticker/price');
+      L.CRYPTO=a.filter(x=>x.symbol.endsWith('USDT')).map(x=>({c:x.symbol.slice(0,-4),p:+x.price}));
+      L.CRYPTO.forEach(x=>live[key('CRYPTO',x.c)]=x.p);return}catch(e){}}
+  throw new Error('加密貨幣:Binance 連線失敗')}
+
+async function getTW(){
+  const [a,b]=await Promise.allSettled([T('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL',15000),T('https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes',15000)]);
+  const rows=[];
+  if(a.status==='fulfilled'&&Array.isArray(a.value))a.value.forEach(x=>rows.push({c:x.Code,n:x.Name,p:num(x.ClosingPrice)}));
+  if(b.status==='fulfilled'&&Array.isArray(b.value))b.value.forEach(x=>rows.push({c:x.SecuritiesCompanyCode,n:x.CompanyName,p:num(x.Close)}));
+  if(!rows.length)throw new Error('台股:證交所/櫃買連線失敗');
+  L.TW=rows;twT=Date.now();rows.forEach(x=>{if(x.p)live[key('TW',x.c)]=x.p})}
+
+async function finmind(sym){
+  const d=new Date(Date.now()-10*864e5).toISOString().slice(0,10);
+  const j=await T('https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id='+encodeURIComponent(sym)+'&start_date='+d);
+  const r=j.data&&j.data[j.data.length-1];if(!r)throw 0;return r.close}
+
+function parseYahoo(j){
+  const m=j&&j.chart&&j.chart.result&&j.chart.result[0]&&j.chart.result[0].meta;
+  const px=m&&(m.regularMarketPrice||m.previousClose||m.chartPreviousClose);
+  if(typeof px==='number'&&px>0)return px;
+  throw new Error('invalid yahoo');
+}
+
+async function getUS(sym){
+  const clean=sym.trim().toUpperCase();
+  if(!clean)throw new Error('empty symbol');
+  const ySym=clean.replace('.','-');
+  const ts=Date.now();
+  const yUrl=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ySym)}?range=5d&interval=1d&_=${ts}`;
+  const stooqUrl=`https://stooq.com/q/l/?s=${encodeURIComponent(clean.toLowerCase().replace('.','-')+'.us')}&f=sd2t2ohlcv&h&e=csv`;
+
+  const tasks=[];
+  if(S.finnhubKey){
+    tasks.push((async()=>{
+      const j=await T(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(clean)}&token=${encodeURIComponent(S.finnhubKey)}`,7000);
+      if(j&&typeof j.c==='number'&&j.c>0)return j.c;
+      throw new Error('finnhub no price');
+    })());
+  }
+  tasks.push(T(yUrl,6000).then(parseYahoo));
+  tasks.push(T(`https://api.allorigins.win/raw?url=${encodeURIComponent(yUrl)}`,8500).then(parseYahoo));
+  tasks.push(T(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(yUrl)}`,8500).then(parseYahoo));
+  tasks.push(T(`https://corsproxy.io/?${encodeURIComponent(yUrl)}`,8500).then(parseYahoo));
+  tasks.push((async()=>{
+    const txt=await TText(`https://api.allorigins.win/raw?url=${encodeURIComponent(stooqUrl)}`,8500);
+    const lines=txt.trim().split(/\r?\n/);
+    if(lines.length>=2){
+      const cols=lines[1].split(',');
+      const closePx=parseFloat(cols[6]);
+      if(!isNaN(closePx)&&closePx>0)return closePx;
+    }
+    throw new Error('stooq no price');
+  })());
+
+  return Promise.any(tasks);
+}
+
+async function refresh(){
+  if(busy)return;busy=true;$('status').textContent='更新中…';
+  const open=positions().filter(p=>p.qty>1e-12),errs=[],jobs=[];
+  if(open.some(p=>p.type==='CRYPTO')||!L.CRYPTO.length)jobs.push(getCrypto().catch(e=>errs.push(e.message)));
+  if(!L.TW.length||(open.some(p=>p.type==='TW')&&Date.now()-twT>3e5))jobs.push(getTW().catch(e=>errs.push(e.message)));
+  const us=[...new Set(open.filter(p=>p.type==='US').map(p=>p.sym))];let usFail=0;
+  if(us.length){
+    jobs.push(Promise.all(us.map(x=>getUS(x).then(v=>live[key('US',x)]=v).catch(()=>usFail++))).then(()=>{
+      if(usFail)errs.push('美股:'+usFail+' 檔取價失敗'+(S.finnhubKey?'(請確認代號或金鑰)':'(建議設定 Finnhub 免費金鑰或手動輸入)'));
+    }));
+  }
+  if(Date.now()-fxT>36e5)jobs.push(fx());
+  await Promise.all(jobs);
+  await Promise.all(open.filter(p=>p.type==='TW'&&live[key('TW',p.sym)]==null).map(p=>finmind(p.sym).then(v=>live[key('TW',p.sym)]=v).catch(()=>{})));
+  const miss=[...new Set(open.filter(p=>priceOf(p)==null).map(p=>p.sym))];
+  $('status').textContent='更新於 '+new Date().toLocaleTimeString('zh-TW')+(errs.length?'；'+errs.join('、'):'')+(miss.length?'；查無報價:'+miss.join(', ')+'(可手動輸入)':'');
+  snapshot();busy=false;if(!document.activeElement?.classList.contains('price-in'))render();
+}
+
+/* 費用、匯率、快照 */
+const DEF={twDisc:6,twMin:20,twTax:0.3,etfTax:0.1,usRate:0,usMin:0,cryptoRate:0.1,goldRate:0,usdtwd:32,finnhubKey:''};
+const KEY_SET='pf.set',KEY_SNAP='pf.snap';
+let S={...DEF,...load(KEY_SET,{})},snap=load(KEY_SNAP,{}),fxT=0;
+const rate=ty=>ty==='US'||ty==='CRYPTO'?S.usdtwd:1;
+const ymd=d=>{const z=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())};
+
+function calcFee(ty,sym,side,qty,price){
+  const a=qty*price;if(!(a>0))return 0;
+  if(ty==='TW'){const c=Math.max(a*0.001425*S.twDisc/10,S.twMin);
+    const tax=side==='sell'?a*(/^00/.test(sym)?S.etfTax:S.twTax)/100:0;return Math.round(c+tax)}
+  if(ty==='US')return Math.round(Math.max(a*S.usRate/100,S.usMin)*100)/100;
+  if(ty==='CRYPTO')return Math.round(a*S.cryptoRate/100*1e4)/1e4;
+  if(ty==='GOLD')return Math.round(a*(S.goldRate||0)/100);
+  return 0}
+
+function derive(d){
+  const qty=+d.qty||0,price=+d.price||0,amt=+d.amount||0;
+  if(d.type==='CASH'||d.type==='BANK'){
+    const p=price>0?price:1;
+    if(qty>0)return{qty,price:p};
+    if(amt>0)return{qty:Math.round(amt/p*1e8)/1e8,price:p};
+    return null}
+  if(qty&&price)return{qty,price};
+  if(amt&&price)return{qty:Math.round(amt/price*1e8)/1e8,price};
+  if(amt&&qty)return{qty,price:amt/qty};return null}
+
+function feeHint(){const d=Object.fromEntries(new FormData($('f'))),r=derive(d);
+  $('feeHint').textContent=(r&&d.fee==='')?'預估手續費 '+fmt(calcFee(d.type,d.sym.trim().toUpperCase(),d.side,r.qty,r.price))+(d.type==='TW'&&d.side==='sell'?'(含證交稅)':'')+',可自行填入覆蓋':''}
+
+function syncSet(){
+  document.querySelectorAll('[data-s]').forEach(i=>i.value=S[i.dataset.s]??'');
+  $('fhKey').value=S.finnhubKey||'';
+  $('syncUrl').value=syncUrl||'';
+}
+document.querySelectorAll('[data-s]').forEach(i=>i.addEventListener('change',()=>{const v=parseFloat(i.value);
+  if(!isNaN(v)&&v>=0){S[i.dataset.s]=v;save(KEY_SET,S);feeHint();render();schedulePush()}else syncSet()}));
+$('f').addEventListener('input',feeHint);$('f').addEventListener('change',feeHint);
+async function fx(){fxT=Date.now();try{const j=await T('https://open.er-api.com/v6/latest/USD');const r=j.rates&&j.rates.TWD;
+  if(r){S.usdtwd=Math.round(r*1000)/1000;save(KEY_SET,S);syncSet()}}catch(e){}}
+
+function totals(filterTy='ALL'){
+  let mv=0,cost=0,miss=0;
+  positions().filter(p=>p.qty>1e-12&&(filterTy==='ALL'||p.type===filterTy)).forEach(p=>{
+    const r=rate(p.type),px=priceOf(p);cost+=p.cost*r;if(px==null)miss++;else mv+=px*p.qty*r});
+  return{mv,cost,miss}}
+
+function snapshot(){
+  const t=totals('ALL');if(t.miss||!t.mv)return;
+  const byType={};
+  ALL_TYPES.forEach(ty=>{const bt=totals(ty);byType[ty]={mv:Math.round(bt.mv),cost:Math.round(bt.cost)}});
+  snap[ymd(new Date())]={mv:Math.round(t.mv),cost:Math.round(t.cost),byType};
+  const ks=Object.keys(snap).sort();while(ks.length>800)delete snap[ks.shift()];save(KEY_SNAP,snap)}
+
+function costTimeline(filterTy='ALL'){
+  const m={},out={};
+  [...txs].filter(t=>filterTy==='ALL'||t.type===filterTy).sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id).forEach(t=>{
+    const k=key(t.type,t.sym),p=m[k]??={type:t.type,qty:0,cost:0};
+    if(t.side==='buy'){p.qty+=t.qty;p.cost+=t.qty*t.price+t.fee}
+    else{const q=Math.min(t.qty,p.qty),avg=p.qty?p.cost/p.qty:0;p.cost-=avg*q;p.qty-=q}
+    out[t.date]=Object.values(m).reduce((a,x)=>a+x.cost*rate(x.type),0)});
+  return out}
+
+/* 圖表：持倉配置支援「依類型分類 + 點擊進入該類型細項」 */
+const COL=['#0b6e8a','#e0912f','#7a5cc4','#2f9e6f','#c2457a','#5a7d9a','#b5a22c','#8a5a44'];
+const wan=n=>Math.abs(n)>=1e4?(n/1e4).toFixed(Math.abs(n)>=1e6?0:1)+'萬':fmt(n,0);
+
+function renderCharts(){
+  const activeType=chartFilter!=='ALL'?chartFilter:allocDrill;
+  const isTypeOverview=(chartFilter==='ALL'&&!allocDrill);
+  const label=chartFilter==='ALL'?'全部類型':TYPE[chartFilter];
+
+  $('cAllocTitle').textContent=isTypeOverview?'持倉配置(依類型，點擊看細項)':`持倉配置(${TYPE[activeType]}細項)`;
+  $('cAllocAction').innerHTML=(chartFilter==='ALL'&&allocDrill)?`<button type="button" class="chip" id="allocBack">← 返回類型總覽</button>`:'';
+  $('cPlTitle').textContent=`各標的未實現損益(TWD · ${activeType?TYPE[activeType]:label})`;
+  $('cTrendTitle').textContent=`金額變化(TWD · ${activeType?TYPE[activeType]:label})`;
+
+  const allOpen=positions().filter(p=>p.qty>1e-12).map(p=>{
+    const px=priceOf(p),r=rate(p.type);
+    return{p,mv:px==null?null:px*p.qty*r,pl:px==null?null:(px*p.qty-p.cost)*r}
+  }).filter(x=>x.mv!=null);
+
+  const none='<div class="sub">有持倉並取得報價後會顯示圖表。</div>';
+
+  let allocItems=[];
+  if(isTypeOverview){
+    const byTy={};
+    allOpen.forEach(x=>{byTy[x.p.type]=(byTy[x.p.type]||0)+x.mv});
+    allocItems=Object.entries(byTy).map(([ty,v])=>({id:ty,n:TYPE[ty],v,drillable:true})).sort((a,b)=>b.v-a.v);
+  }else{
+    const sub=allOpen.filter(x=>x.p.type===activeType).sort((a,b)=>b.mv-a.mv);
+    const top7=sub.slice(0,7).map(x=>({id:x.p.sym,n:x.p.sym,v:x.mv,drillable:false}));
+    const rest=sub.slice(7).reduce((a,x)=>a+x.mv,0);
+    if(rest>0)top7.push({id:'OTHER',n:'其他',v:rest,drillable:false});
+    allocItems=top7;
+  }
+
+  const allocTot=allocItems.reduce((a,x)=>a+x.v,0);
+  if(!allocTot){
+    $('cAlloc').innerHTML=none;
+  }else{
+    const C=2*Math.PI*60;
+    let off=0;
+    $('cAlloc').innerHTML=`<svg viewBox="0 0 160 160" role="img" aria-label="持倉配置"><g transform="rotate(-90 80 80)">${allocItems.map((x,i)=>{
+      const len=x.v/allocTot*C;
+      const cls=x.drillable?' class="alloc-seg" data-drill="'+esc(x.id)+'"':'';
+      const c=`<circle${cls} cx="80" cy="80" r="60" fill="none" stroke="${COL[i%COL.length]}" stroke-width="22" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}"><title>${esc(x.n)} ${fmt(x.v/allocTot*100,1)}% (${wan(x.v)})</title></circle>`;
+      off+=len;return c;
+    }).join('')}</g>
+    <text x="80" y="76" text-anchor="middle" font-size="10" fill="var(--mute)">${esc(isTypeOverview?'總市值 TWD':TYPE[activeType]+' TWD')}</text>
+    <text x="80" y="94" text-anchor="middle" font-size="15" font-weight="600" fill="var(--ink)">${wan(allocTot)}</text></svg>
+    <ul class="legend">${allocItems.map((x,i)=>`<li${x.drillable?' class="clickable" data-drill="'+esc(x.id)+'"':''}><span><i style="background:${COL[i%COL.length]}"></i>${esc(x.n)}${x.drillable?' ▸':''}</span><span class="num">${fmt(x.v/allocTot*100,1)}%</span></li>`).join('')}</ul>`;
+  }
+
+  const plScope=activeType?allOpen.filter(x=>x.p.type===activeType):allOpen;
+  if(!plScope.length){
+    $('cPl').innerHTML=none;
+  }else{
+    const bars=[...plScope].sort((a,b)=>Math.abs(b.pl)-Math.abs(a.pl)).slice(0,8),mx=Math.max(...bars.map(x=>Math.abs(x.pl)),1);
+    $('cPl').innerHTML=bars.map(x=>{const up=x.pl>=0;
+      return `<div class="row"><span>${esc(x.p.sym)}</span><div class="trk"><i class="${up?'bu':'bd'}" style="${up?'left':'right'}:50%;width:${Math.abs(x.pl)/mx*50}%"></i></div><span class="num ${up?'up':'down'}">${up?'+':'-'}${wan(Math.abs(x.pl))}</span></div>`}).join('');
+  }
+
+  const trendFilter=activeType||'ALL';
+  const ct=costTimeline(trendFilter),cd=Object.keys(ct).sort(),today=ymd(new Date());
+  const mvMap={};
+  Object.keys(snap).sort().forEach(d=>{
+    if(trendFilter==='ALL')mvMap[d]=snap[d].mv;
+    else if(snap[d].byType&&snap[d].byType[trendFilter])mvMap[d]=snap[d].byType[trendFilter].mv;
+  });
+  const sd=Object.keys(mvMap).sort();
+  if(!cd.length&&!sd.length){$('cTrend').innerHTML='<div class="sub">新增交易後會顯示投入成本與市值變化。</div>';return}
+  const all=[...cd,...sd,today].sort(),t0=Date.parse(all[0]),t1=Math.max(Date.parse(all[all.length-1]),t0+864e5);
+  const W=640,H=240,l=54,r=12,tp=14,bt=28,X=d=>l+(Date.parse(d)-t0)/(t1-t0)*(W-l-r);
+  const costPts=cd.map(d=>[d,ct[d]]),mvPts=sd.map(d=>[d,mvMap[d]]);
+  const ymax=Math.max(1,...costPts.map(a=>a[1]),...mvPts.map(a=>a[1]))*1.1,Y=v=>H-bt-v/ymax*(H-bt-tp);
+  let cp='';costPts.forEach((a,i)=>{cp+=i?`H${X(a[0])}V${Y(a[1])}`:`M${X(a[0])} ${Y(a[1])}`});
+  if(costPts.length)cp+=`H${X(today)}`;
+  const grid=[0,.5,1].map(f=>{const v=ymax/1.1*f;return `<line x1="${l}" x2="${W-r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${l-6}" y="${Y(v)+4}" text-anchor="end" font-size="11" fill="var(--mute)">${wan(v)}</text>`}).join('');
+  $('cTrend').innerHTML=`<div class="key"><span><b style="color:var(--mute)">- - -</b> 投入成本</span><span><b style="color:var(--accent)">●</b> 市值</span></div>
+  <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="金額變化">${grid}
+  <path d="${cp}" fill="none" stroke="var(--mute)" stroke-width="2" stroke-dasharray="6 4"/>
+  ${mvPts.length>1?`<polyline fill="none" stroke="var(--accent)" stroke-width="2.5" points="${mvPts.map(a=>X(a[0])+','+Y(a[1])).join(' ')}"/>`:''}
+  ${mvPts.map(a=>`<circle cx="${X(a[0])}" cy="${Y(a[1])}" r="4" fill="var(--accent)"><title>${a[0]} 市值 ${fmt(a[1],0)}</title></circle>`).join('')}
+  <text x="${l}" y="${H-8}" font-size="11" fill="var(--mute)">${all[0]}</text><text x="${W-r}" y="${H-8}" text-anchor="end" font-size="11" fill="var(--mute)">${all[all.length-1]}</text></svg>`
+}
+
+$('cAlloc').addEventListener('click',e=>{
+  const el=e.target.closest('[data-drill]');
+  if(el&&chartFilter==='ALL'){allocDrill=el.dataset.drill;renderCharts()}
+});
+$('cAllocAction').addEventListener('click',e=>{
+  if(e.target.id==='allocBack'){allocDrill=null;renderCharts()}
+});
+
+/* 外觀 */
+function applyTheme(t){const r=document.documentElement;
+  if(t==='light'||t==='dark')r.dataset.theme=t;else{delete r.dataset.theme;t='auto'}
+  try{localStorage.setItem('pf.theme',t)}catch(e){}
+  document.querySelectorAll('#theme button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.t===t)))}
+$('theme').addEventListener('click',e=>{const t=e.target.dataset.t;if(t)applyTheme(t)});
+applyTheme((()=>{try{return localStorage.getItem('pf.theme')}catch(e){return'auto'}})()||'auto');
+
+/* 自動帶入現價 */
+let pfTok=0;
+async function fillPrice(){
+  const f=$('f'),ty=f.type.value,sym=f.sym.value.trim().toUpperCase(),tok=++pfTok;
+  if(f.price.value!==''&&f.price.dataset.auto!=='1')return;
+  const clear=()=>{if(f.price.dataset.auto==='1'){f.price.value='';delete f.price.dataset.auto;feeHint()}};
+  if(!sym){if(ty==='CASH'||ty==='BANK'){f.price.value='1';f.price.dataset.auto='1';feeHint()}else clear();return}
+  let px=manual[key(ty,sym)]??live[key(ty,sym)]??((ty==='CASH'||ty==='BANK')?1:null);
+  if(px==null){try{px=ty==='US'?await getUS(sym):ty==='TW'?await finmind(sym):null}catch(e){px=null}
+    if(px!=null)live[key(ty,sym)]=px}
+  if(tok!==pfTok)return;
+  if(px==null){clear();return}
+  if(f.price.value===''||f.price.dataset.auto==='1'){f.price.value=px;f.price.dataset.auto='1';feeHint()}}
+{const f=$('f');let dt=0;
+  f.price.addEventListener('input',()=>{delete f.price.dataset.auto});
+  f.sym.addEventListener('input',()=>{clearTimeout(dt);dt=setTimeout(fillPrice,400)});
+  f.sym.addEventListener('change',fillPrice);f.type.addEventListener('change',fillPrice);
+  $('fhKey').addEventListener('change',e=>{S.finnhubKey=e.target.value.trim();save(KEY_SET,S);schedulePush();refresh()})}
+
+/* 交易紀錄：先依「類型」合併成同一個區塊，點開看所有該類型交易流水 */
+function renderTxs(){
+  const filtered=txFilter==='ALL'?txs:txs.filter(t=>t.type===txFilter);
+  if(!filtered.length){
+    $('txs').innerHTML=`<div class="card empty">${txFilter==='ALL'?'尚無交易紀錄。':'目前此類型尚無交易紀錄。'}</div>`;
+    return;
+  }
+  const typesToShow=txFilter==='ALL'?ALL_TYPES.filter(ty=>filtered.some(t=>t.type===ty)):[txFilter];
+  const html=typesToShow.map(ty=>{
+    const list=[...filtered.filter(t=>t.type===ty)].sort((x,y)=>y.date.localeCompare(x.date)||y.id-x.id);
+    const syms=[...new Set(list.map(t=>t.sym))];
+    const buyAmt=list.filter(t=>t.side==='buy').reduce((a,t)=>a+t.qty*t.price+t.fee,0);
+    const sellAmt=list.filter(t=>t.side==='sell').reduce((a,t)=>a+t.qty*t.price-t.fee,0);
+    const isOpen=txFilter!=='ALL'||openTxType.has(ty);
+    return `<details class="grp tx-grp" data-txty="${ty}"${isOpen?' open':''}>
+      <summary>
+        <b>${TYPE[ty]}</b>
+        <span class="sub">${list.length} 筆 · ${syms.length} 個代碼 (${CUR[ty]})</span>
+        <span class="grow"></span>
+        <span class="hold-metrics">
+          <span class="sub">買/存 ${fmt(buyAmt)}</span>
+          <span class="sub">賣/領 ${fmt(sellAmt)}</span>
+        </span>
+      </summary>
+      <div class="wr"><table>
+        <thead><tr><th>日期</th><th>代碼</th><th>買賣</th><th class="num">數量</th><th class="num">單價</th><th class="num">手續費</th><th></th></tr></thead>
+        <tbody>${list.map(t=>`<tr>
+          <td>${t.date}</td>
+          <td><b>${esc(t.sym)}</b></td>
+          <td>${t.side==='buy'?'買入/存入':'賣出/提領'}</td>
+          <td class="num">${fmt(t.qty,t.qty%1?4:0)}</td>
+          <td class="num">${fmt(t.price)}</td>
+          <td class="num">${fmt(t.fee)}</td>
+          <td><button class="link${pend===t.id?' warn':''}" data-del="${t.id}">${pend===t.id?'確定刪除?':'刪除'}</button></td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+    </details>`;
+  }).join('');
+  $('txs').innerHTML=html;
+}
+
+$('txs').addEventListener('toggle',e=>{
+  const ty=e.target.dataset&&e.target.dataset.txty;
+  if(!ty||txFilter!=='ALL')return;
+  e.target.open?openTxType.add(ty):openTxType.delete(ty);
+  save('pf.txTypeOpen',[...openTxType]);
+},true);
+
+/* 代碼自動建議 */
+const TOP='BTC ETH BNB SOL XRP DOGE ADA TRX AVAX LINK DOT LTC SHIB TON BCH UNI NEAR ATOM'.split(' ');
+const NAMES={BTC:'比特幣',ETH:'以太幣',BNB:'幣安幣',SOL:'Solana',XRP:'瑞波幣',DOGE:'狗狗幣',ADA:'Cardano',TRX:'波場',AVAX:'Avalanche',LINK:'Chainlink',DOT:'Polkadot',LTC:'萊特幣',SHIB:'柴犬幣',USDC:'USD Coin'};
+const US=[['AAPL','Apple 蘋果'],['MSFT','Microsoft 微軟'],['NVDA','NVIDIA 輝達'],['GOOGL','Alphabet 谷歌'],['AMZN','Amazon 亞馬遜'],['META','Meta'],['TSLA','Tesla 特斯拉'],['AVGO','Broadcom 博通'],['TSM','台積電 ADR'],['AMD','AMD 超微'],['NFLX','Netflix'],['INTC','Intel 英特爾'],['QCOM','Qualcomm 高通'],['MU','Micron 美光'],['ORCL','Oracle'],['COST','Costco'],['JPM','JPMorgan'],['V','Visa'],['SPY','S&P 500 ETF'],['VOO','Vanguard S&P 500 ETF'],['VTI','Vanguard 全市場 ETF'],['QQQ','Nasdaq 100 ETF'],['SMH','半導體 ETF'],['BRK.B','波克夏']].map(([c,n])=>({c,n}));
+const TW0=[['2330','台積電'],['2317','鴻海'],['2454','聯發科'],['0050','元大台灣50'],['0056','元大高股息'],['00878','國泰永續高股息'],['2412','中華電'],['2308','台達電'],['2303','聯電'],['2382','廣達'],['2881','富邦金'],['2882','國泰金'],['2301','光寶科'],['3008','大立光']].map(([c,n])=>({c,n}));
+const CASH0=[['TWD-CASH','台幣現金'],['USD-CASH','美元現金']].map(([c,n])=>({c,n,p:1}));
+const BANK0=[['BANK-TWD','台幣銀行帳戶'],['BANK-USD','外幣銀行帳戶']].map(([c,n])=>({c,n,p:1}));
+const GOLD0=[['GOLD-G','黃金存摺(公克)'],['GOLD-TW','台灣銀行黃金'],['XAU','現貨黃金']].map(([c,n])=>({c,n}));
+
+let sgItems=[],sgI=-1;
+function showSg(){
+  const f=$('f'),q=f.sym.value.trim(),ty=f.type.value,sg=$('sg');
+  if(!q){sg.hidden=true;sgItems=[];return}
+  const Q=q.toUpperCase(),ql=q.toLowerCase();
+  const pool=ty==='CRYPTO'?L.CRYPTO.map(x=>({...x,n:NAMES[x.c]||''}))
+    :ty==='TW'?(L.TW.length?L.TW:TW0)
+    :ty==='US'?US
+    :ty==='CASH'?CASH0
+    :ty==='BANK'?BANK0
+    :GOLD0;
+  const rk=x=>String(x.c).toUpperCase().startsWith(Q)?0:(x.n||'').toLowerCase().includes(ql)?1:String(x.c).toUpperCase().includes(Q)?2:9;
+  const pri=x=>ty==='CRYPTO'?(TOP.indexOf(x.c)+100)%100:0;
+  sgItems=pool.map(x=>[rk(x),x]).filter(a=>a[0]<9)
+    .sort((a,b)=>a[0]-b[0]||pri(a[1])-pri(b[1])||a[1].c.length-b[1].c.length||a[1].c.localeCompare(b[1].c))
+    .slice(0,8).map(a=>a[1]);
+  sgI=sgItems.length?0:-1;paintSg();
+}
+function paintSg(){const sg=$('sg');
+  sg.innerHTML=sgItems.map((x,i)=>`<li data-c="${esc(x.c)}" class="${i===sgI?'on':''}"><span>${esc(x.c)}</span><small>${esc(x.n||'')}${x.p?' · '+fmt(x.p):''}</small></li>`).join('');
+  sg.hidden=!sgItems.length}
+function pickSg(c){const f=$('f');f.sym.value=c;$('sg').hidden=true;sgItems=[];fillPrice();f.qty.focus()}
+{const f=$('f');
+  f.sym.addEventListener('input',showSg);f.sym.addEventListener('focus',showSg);
+  f.type.addEventListener('change',showSg);
+  f.sym.addEventListener('blur',()=>setTimeout(()=>{$('sg').hidden=true},150));
+  f.sym.addEventListener('keydown',e=>{
+    if($('sg').hidden||!sgItems.length)return;
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();sgI=(sgI+(e.key==='ArrowDown'?1:-1)+sgItems.length)%sgItems.length;paintSg()}
+    else if(e.key==='Enter'){e.preventDefault();pickSg(sgItems[sgI].c)}
+    else if(e.key==='Escape')$('sg').hidden=true});
+  $('sg').addEventListener('mousedown',e=>{const li=e.target.closest('li');if(li){e.preventDefault();pickSg(li.dataset.c)}})}
+
+$('holdType').addEventListener('change',e=>{holdFilter=e.target.value;renderMain()});
+$('chartType').addEventListener('change',e=>{chartFilter=e.target.value;allocDrill=null;renderCharts()});
+$('txType').addEventListener('change',e=>{txFilter=e.target.value;renderTxs()});
+
+$('syncUrl').addEventListener('change',e=>{
+  syncUrl=e.target.value.trim();
+  try{localStorage.setItem(KEY_SYNC,syncUrl)}catch(_){}
+  if(syncUrl)cloudPull(false);
+  else setSyncBadge('☁️ 未設定雲端同步');
+});
+$('cloudPull').onclick=()=>cloudPull(false);
+$('cloudPush').onclick=()=>cloudPush(false);
+
+$('f').addEventListener('submit',e=>{
+  e.preventDefault();const d=Object.fromEntries(new FormData(e.target));
+  const r=derive(d);
+  if(!r){$('msg').textContent='請在數量、單價、金額中填入適當數值(現金/銀行填金額或數量即可)';return}
+  const sym=d.sym.trim().toUpperCase();
+  txs.push({id:Date.now(),type:d.type,sym,side:d.side,qty:r.qty,price:r.price,fee:d.fee===''?calcFee(d.type,sym,d.side,r.qty,r.price):(+d.fee||0),date:d.date});
+  $('msg').textContent='';save(KEY_TX,txs);e.target.qty.value='';e.target.price.value='';e.target.amount.value='';delete e.target.price.dataset.auto;feeHint();render();schedulePush();refresh();
+});
+$('txs').addEventListener('click',e=>{const id=+e.target.dataset.del;if(!id)return;
+  if(pend===id){txs=txs.filter(t=>t.id!==id);save(KEY_TX,txs);pend=null;render();schedulePush();return}
+  pend=id;clearTimeout(pendT);pendT=setTimeout(()=>{pend=null;render()},3000);render()});
+$('hold').addEventListener('change',e=>{const k=e.target.dataset.k;if(!k)return;
+  if(e.target.value==='')delete manual[k];else manual[k]=+e.target.value;save(KEY_PX,manual);render();schedulePush()});
+$('refresh').onclick=()=>{if(syncUrl)cloudPull(true);refresh()};
+$('exp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({txs,manual,set:{...S,finnhubKey:''},snap},null,1)],{type:'application/json'}));a.download='portfolio.json';a.click()};
+$('imp').onclick=()=>$('file').click();
+$('file').onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());txs=j.txs||[];manual=j.manual||{};S={...DEF,...(j.set||{})};snap=j.snap||{};save(KEY_TX,txs);save(KEY_PX,manual);save(KEY_SET,S);save(KEY_SNAP,snap);syncSet();render();schedulePush();refresh()}catch{$('msg').textContent='匯入失敗:檔案格式不正確'}};
+$('f').date.value=new Date().toISOString().slice(0,10);
+syncSet();feeHint();render();
+if(syncUrl)cloudPull(true).then(()=>refresh());else refresh();
+setInterval(refresh,30000);
+</script>
+</body>
+</html>
