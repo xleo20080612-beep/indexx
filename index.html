@@ -188,6 +188,7 @@ button.warn{color:var(--up)}
 
 <script>
 const KEY_TX='pf.tx',KEY_PX='pf.manual',KEY_SYNC='pf.syncUrl';
+const DEFAULT_FINNHUB_KEY='dc2pf61r01quhc9klfa0dc2pf61r01quhc9klfag';
 const CUR={TW:'TWD',US:'USD',CRYPTO:'USD',CASH:'TWD',BANK:'TWD',GOLD:'TWD'};
 const TYPE={TW:'台股',US:'美股',CRYPTO:'加密貨幣',CASH:'現金',BANK:'銀行',GOLD:'黃金'};
 const ALL_TYPES=['TW','US','CRYPTO','CASH','BANK','GOLD'];
@@ -265,7 +266,7 @@ async function cloudPull(isInit=false){
     if(j&&Array.isArray(j.txs)){
       txs=j.txs;
       manual=j.manual||{};
-      if(j.set){S={...DEF,...j.set,finnhubKey:S.finnhubKey||''};save(KEY_SET,S);syncSet()}
+      if(j.set){S={...DEF,...j.set,finnhubKey:S.finnhubKey||DEFAULT_FINNHUB_KEY};save(KEY_SET,S);syncSet()}
       if(j.snap){snap=j.snap;save(KEY_SNAP,snap)}
       save(KEY_TX,txs);
       save(KEY_PX,manual);
@@ -404,11 +405,12 @@ async function getUS(sym){
   const ts=Date.now();
   const yUrl=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ySym)}?range=5d&interval=1d&_=${ts}`;
   const stooqUrl=`https://stooq.com/q/l/?s=${encodeURIComponent(clean.toLowerCase().replace('.','-')+'.us')}&f=sd2t2ohlcv&h&e=csv`;
+  const fhToken=(S.finnhubKey||DEFAULT_FINNHUB_KEY).trim();
 
   const tasks=[];
-  if(S.finnhubKey){
+  if(fhToken){
     tasks.push((async()=>{
-      const j=await T(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(clean)}&token=${encodeURIComponent(S.finnhubKey)}`,7000);
+      const j=await T(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(clean)}&token=${encodeURIComponent(fhToken)}`,7000);
       if(j&&typeof j.c==='number'&&j.c>0)return j.c;
       throw new Error('finnhub no price');
     })());
@@ -439,7 +441,7 @@ async function refresh(){
   const us=[...new Set(open.filter(p=>p.type==='US').map(p=>p.sym))];let usFail=0;
   if(us.length){
     jobs.push(Promise.all(us.map(x=>getUS(x).then(v=>live[key('US',x)]=v).catch(()=>usFail++))).then(()=>{
-      if(usFail)errs.push('美股:'+usFail+' 檔取價失敗'+(S.finnhubKey?'(請確認代號或金鑰)':'(建議設定 Finnhub 免費金鑰或手動輸入)'));
+      if(usFail)errs.push('美股:'+usFail+' 檔取價失敗'+(S.finnhubKey||DEFAULT_FINNHUB_KEY?'(請確認代號或金鑰)':'(建議設定 Finnhub 免費金鑰或手動輸入)'));
     }));
   }
   if(Date.now()-fxT>36e5)jobs.push(fx());
@@ -451,9 +453,10 @@ async function refresh(){
 }
 
 /* 費用、匯率、快照 */
-const DEF={twDisc:6,twMin:20,twTax:0.3,etfTax:0.1,usRate:0,usMin:0,cryptoRate:0.1,goldRate:0,usdtwd:32,finnhubKey:''};
+const DEF={twDisc:6,twMin:20,twTax:0.3,etfTax:0.1,usRate:0,usMin:0,cryptoRate:0.1,goldRate:0,usdtwd:32,finnhubKey:DEFAULT_FINNHUB_KEY};
 const KEY_SET='pf.set',KEY_SNAP='pf.snap';
 let S={...DEF,...load(KEY_SET,{})},snap=load(KEY_SNAP,{}),fxT=0;
+if(!S.finnhubKey)S.finnhubKey=DEFAULT_FINNHUB_KEY;
 const rate=ty=>ty==='US'||ty==='CRYPTO'?S.usdtwd:1;
 const ymd=d=>{const z=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())};
 
@@ -482,7 +485,7 @@ function feeHint(){const d=Object.fromEntries(new FormData($('f'))),r=derive(d);
 
 function syncSet(){
   document.querySelectorAll('[data-s]').forEach(i=>i.value=S[i.dataset.s]??'');
-  $('fhKey').value=S.finnhubKey||'';
+  $('fhKey').value=S.finnhubKey||DEFAULT_FINNHUB_KEY;
   $('syncUrl').value=syncUrl||'';
 }
 document.querySelectorAll('[data-s]').forEach(i=>i.addEventListener('change',()=>{const v=parseFloat(i.value);
@@ -630,7 +633,7 @@ async function fillPrice(){
   f.price.addEventListener('input',()=>{delete f.price.dataset.auto});
   f.sym.addEventListener('input',()=>{clearTimeout(dt);dt=setTimeout(fillPrice,400)});
   f.sym.addEventListener('change',fillPrice);f.type.addEventListener('change',fillPrice);
-  $('fhKey').addEventListener('change',e=>{S.finnhubKey=e.target.value.trim();save(KEY_SET,S);refresh()})}
+  $('fhKey').addEventListener('change',e=>{S.finnhubKey=e.target.value.trim()||DEFAULT_FINNHUB_KEY;save(KEY_SET,S);refresh()})}
 
 /* 交易紀錄：先依「類型」合併成同一個區塊，點開看所有該類型交易流水 */
 function renderTxs(){
@@ -751,7 +754,7 @@ $('hold').addEventListener('change',e=>{const k=e.target.dataset.k;if(!k)return;
 $('refresh').onclick=()=>{if(syncUrl)cloudPull(true);refresh()};
 $('exp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({txs,manual,set:{...S,finnhubKey:''},snap},null,1)],{type:'application/json'}));a.download='portfolio.json';a.click()};
 $('imp').onclick=()=>$('file').click();
-$('file').onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());txs=j.txs||[];manual=j.manual||{};S={...DEF,...(j.set||{}),finnhubKey:S.finnhubKey||''};snap=j.snap||{};save(KEY_TX,txs);save(KEY_PX,manual);save(KEY_SET,S);save(KEY_SNAP,snap);syncSet();render();schedulePush();refresh()}catch{$('msg').textContent='匯入失敗:檔案格式不正確'}};
+$('file').onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());txs=j.txs||[];manual=j.manual||{};S={...DEF,...(j.set||{}),finnhubKey:S.finnhubKey||DEFAULT_FINNHUB_KEY};snap=j.snap||{};save(KEY_TX,txs);save(KEY_PX,manual);save(KEY_SET,S);save(KEY_SNAP,snap);syncSet();render();schedulePush();refresh()}catch{$('msg').textContent='匯入失敗:檔案格式不正確'}};
 $('f').date.value=new Date().toISOString().slice(0,10);
 syncSet();feeHint();render();
 if(syncUrl)cloudPull(true).then(()=>refresh());else refresh();
